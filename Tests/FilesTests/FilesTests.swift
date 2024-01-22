@@ -34,6 +34,7 @@ struct DoMagic: ParsableCommand {
 
 // MARK: - FilesTests
 
+@MainActor
 class FilesTests: XCTestCase {
 
   // MARK: Internal

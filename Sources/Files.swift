@@ -438,9 +438,18 @@ extension File {
     return .file
   }
 
-  /// Write a new set of binary data into the file, replacing its current contents.
+  /// Use this FileHandle actor to safely manage read and write actions in an async context.
+  /// `Files` chose to only allow writes to a file if they are on the main actor. To differ from this
+  /// behaviour create a unique actor per file and manage this yourself.
+  /// - Parameter kind: the kind of actor to use. See
+  /// - Returns: a file actor that should be used when writing to file with same url
+  public func fileActor(kind: FileActor.Kind = .updating) throws -> FileActor {
+    try FileActor(url: url, kind: kind)
+  }
+  /// Write a new set of binary data into the file enforcing atomic, replacing its current contents.
   /// - parameter data: The binary data to write.
   /// - throws: `WriteError` in case the operation couldn't be completed.
+  @MainActor
   public func write(_ data: Data) throws {
     do {
       try data.write(to: url, options: .atomic)
@@ -453,6 +462,7 @@ extension File {
   /// - parameter string: The string to write.
   /// - parameter encoding: The encoding of the string (default: `UTF8`).
   /// - throws: `WriteError` in case the operation couldn't be completed.
+  @MainActor
   public func write(_ string: String, encoding: String.Encoding = .utf8) throws {
     guard let data = string.data(using: encoding) else {
       throw WriteError(path: path, reason: .stringEncodingFailed(string))
@@ -464,6 +474,7 @@ extension File {
   /// Append a set of binary data to the file's existing contents.
   /// - parameter data: The binary data to append.
   /// - throws: `WriteError` in case the operation couldn't be completed.
+  @MainActor
   public func append(_ data: Data) throws {
     do {
       let handle = try FileHandle(forWritingTo: url)
@@ -479,6 +490,7 @@ extension File {
   /// - parameter string: The string to append.
   /// - parameter encoding: The encoding of the string (default: `UTF8`).
   /// - throws: `WriteError` in case the operation couldn't be completed.
+  @MainActor
   public func append(_ string: String, encoding: String.Encoding = .utf8) throws {
     guard let data = string.data(using: encoding) else {
       throw WriteError(path: path, reason: .stringEncodingFailed(string))
@@ -489,6 +501,7 @@ extension File {
 
   /// Read the contents of the file as binary data.
   /// - throws: `ReadError` if the file couldn't be read.
+  @MainActor
   public func read() throws -> Data {
     do { return try Data(contentsOf: url) }
     catch { throw ReadError(path: path, reason: .readFailed(error)) }
@@ -498,6 +511,7 @@ extension File {
   /// - parameter encoding: The encoding to decode the file's data using (default: `UTF8`).
   /// - throws: `ReadError` if the file couldn't be read, or if a string couldn't
   ///   be decoded from the file's contents.
+  @MainActor
   public func readAsString(encodedAs encoding: String.Encoding = .utf8) throws -> String {
     guard let string = try String(data: read(), encoding: encoding) else {
       throw ReadError(path: path, reason: .stringDecodingFailed)
@@ -509,6 +523,7 @@ extension File {
   /// Read the contents of the file as an integer.
   /// - throws: `ReadError` if the file couldn't be read, or if the file's
   ///   contents couldn't be converted into an integer.
+  @MainActor
   public func readAsInt() throws -> Int {
     let string = try readAsString()
 
@@ -526,8 +541,9 @@ import AppKit
 
 extension File {
   /// Open the file.
+  @MainActor
   public func open() {
-    NSWorkspace.shared.openFile(path)
+    NSWorkspace.shared.open(url)
   }
 }
 
