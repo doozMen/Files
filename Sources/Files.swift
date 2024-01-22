@@ -501,7 +501,6 @@ extension File {
 
   /// Read the contents of the file as binary data.
   /// - throws: `ReadError` if the file couldn't be read.
-  @MainActor
   public func read() throws -> Data {
     do { return try Data(contentsOf: url) }
     catch { throw ReadError(path: path, reason: .readFailed(error)) }
@@ -511,7 +510,6 @@ extension File {
   /// - parameter encoding: The encoding to decode the file's data using (default: `UTF8`).
   /// - throws: `ReadError` if the file couldn't be read, or if a string couldn't
   ///   be decoded from the file's contents.
-  @MainActor
   public func readAsString(encodedAs encoding: String.Encoding = .utf8) throws -> String {
     guard let string = try String(data: read(), encoding: encoding) else {
       throw ReadError(path: path, reason: .stringDecodingFailed)
