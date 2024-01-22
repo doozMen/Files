@@ -1,4 +1,4 @@
-// swift-tools-version:5.5
+// swift-tools-version:5.7
 
 ///  Files
 ///  Copyright (c) John Sundell 2017
@@ -8,7 +8,7 @@ import PackageDescription
 
 let package = Package(
   name: "Files",
-  platforms: [.macOS(.v11)],
+  platforms: [.macOS(.v13)],
   products: [
     .library(name: "Files", targets: ["Files"]),
   ],
