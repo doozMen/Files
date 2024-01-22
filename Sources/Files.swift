@@ -443,7 +443,7 @@ extension File {
   /// - throws: `WriteError` in case the operation couldn't be completed.
   public func write(_ data: Data) throws {
     do {
-      try data.write(to: url)
+      try data.write(to: url, options: .atomic)
     } catch {
       throw WriteError(path: path, reason: .writeFailed(error))
     }
