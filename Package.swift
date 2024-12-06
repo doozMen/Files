@@ -1,4 +1,4 @@
-// swift-tools-version:5.9
+// swift-tools-version: 5.10
 
 ///  Files
 ///  Copyright (c) John Sundell 2017
@@ -8,19 +8,18 @@ import PackageDescription
 
 let package = Package(
   name: "Files",
+  platforms: [.macOS(.v13)],
   products: [
     .library(name: "Files", targets: ["Files"]),
   ],
   dependencies: [
-    .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.1.4"),
-    .package(url: "https://github.com/apple/swift-system.git", from: "1.2.1"),
+    .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.1.4")
   ],
   targets: [
     .target(
       name: "Files",
       dependencies: [
-        .product(name: "ArgumentParser", package: "swift-argument-parser"),
-        .product(name: "SystemPackage", package: "swift-system")
+        .product(name: "ArgumentParser", package: "swift-argument-parser")
       ],
       path: "Sources"),
     .testTarget(

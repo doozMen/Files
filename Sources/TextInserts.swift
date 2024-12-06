@@ -1,5 +1,4 @@
 import Foundation
-import SystemPackage
 
 // MARK: - InsertError
 
@@ -233,15 +232,18 @@ extension File {
         with: changingToName ?? nameExcludingExtension
       )
     
-    guard let newName = FilePath(relativePath).lastComponent else {
-      throw FileError.invalidFileName(relativePath)
+    let newName: String
+    if #available(iOS 16.0, *) {
+      newName = URL(filePath: relativePath).lastPathComponent
+    } else {
+      newName = URL(fileURLWithPath: relativePath).lastPathComponent
     }
     
     do {
       guard copyFolder.containsFile(at: relativePath) else {
         let result = try copy(to: copyFolder)
-        if name != newName.string {
-          try result.rename(to: newName.string)
+        if name != newName {
+          try result.rename(to: newName)
         }
         return result
       }

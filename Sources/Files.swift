@@ -527,7 +527,7 @@ import AppKit
 extension File {
   /// Open the file.
   public func open() {
-    NSWorkspace.shared.openFile(path)
+    NSWorkspace.shared.open(URL(filePath: path))
   }
 }
 
