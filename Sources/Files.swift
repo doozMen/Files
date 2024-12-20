@@ -1,17 +1,17 @@
 ///  Files
-/// 
+///
 ///  Copyright (c) 2017-2019 John Sundell. Licensed under the MIT license, as follows:
-/// 
+///
 ///  Permission is hereby granted, free of charge, to any person obtaining a copy
 ///  of this software and associated documentation files (the "Software"), to deal
 ///  in the Software without restriction, including without limitation the rights
 ///  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 ///  copies of the Software, and to permit persons to whom the Software is
 ///  furnished to do so, subject to the following conditions:
-/// 
+///
 ///  The above copyright notice and this permission notice shall be included in all
 ///  copies or substantial portions of the Software.
-/// 
+///
 ///  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 ///  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 ///  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -56,15 +56,17 @@ extension Location {
   /// - parameter path: The absolute path of the location.
   /// - throws: `LocationError` if the item couldn't be found.
   public init(path: String) throws {
-    try self.init(storage: Storage(
-      path: path,
-      fileManager: .default))
+    try self.init(
+      storage: Storage(
+        path: path,
+        fileManager: .default))
   }
 
   public init(url: Foundation.URL) throws {
-    try self.init(storage: Storage(
-      url: url,
-      fileManager: .default))
+    try self.init(
+      storage: Storage(
+        url: url,
+        fileManager: .default))
   }
 
   // MARK: Public
@@ -122,7 +124,7 @@ extension Location {
     return storage.attributes[.modificationDate] as? Date
   }
 
-  public static func ==(lhs: Self, rhs: Self) -> Bool {
+  public static func == (lhs: Self, rhs: Self) -> Bool {
     return lhs.storage.path == rhs.storage.path
   }
 
@@ -179,9 +181,22 @@ extension Location {
   /// - returns: The new, copied location.
   @discardableResult
   public func copy(to folder: Folder) throws -> Self {
-    let path = folder.path + name
-    try storage.copy(to: path)
-    return try Self(path: path)
+    switch Self.kind {
+    case .file:
+      let newPath = folder.path + name
+      let data = try File(path: path).read()
+      if folder.containsFile(at: newPath) {
+        try folder.file(at: newPath).write(data)
+        return try Self(path: newPath)
+      } else {
+        let file = try folder.createFile(at: newPath)
+        try file.write(data)
+        return try Self(path: file.path)
+      }
+    case .folder:
+      try storage.copyFolder(to: folder)
+      return try Self(path: folder.path)
+    }
   }
 
   /// Delete this location. It will be permanently deleted. Use with caution.
@@ -196,9 +211,10 @@ extension Location {
   /// - parameter manager: The new file manager that should manage this location.
   /// - throws: `LocationError` if the change couldn't be completed.
   public func managedBy(_ manager: FileManager) throws -> Self {
-    return try Self(storage: Storage(
-      path: path,
-      fileManager: manager))
+    return try Self(
+      storage: Storage(
+        path: path,
+        fileManager: manager))
   }
 }
 
@@ -279,8 +295,8 @@ extension Storage {
 
   fileprivate func move(
     to newPath: String,
-    errorReasonProvider: (Error) -> LocationErrorReason) throws
-  {
+    errorReasonProvider: (Error) -> LocationErrorReason
+  ) throws {
     do {
       try fileManager.moveItem(atPath: path, toPath: newPath)
 
@@ -295,9 +311,34 @@ extension Storage {
     }
   }
 
-  fileprivate func copy(to newPath: String) throws {
+  fileprivate func copyFile(to path: String) throws {
+    
+  }
+  
+  fileprivate func copyFolder(to destination: Folder) throws {
+    let fileManager = FileManager.default
+    let current = try Folder(path: path)
     do {
-      try fileManager.copyItem(atPath: path, toPath: newPath)
+      let contents = try fileManager
+        .contentsOfDirectory(atPath: path)
+      for item in contents {
+        if let folder = try? current.subfolder(named: item) {
+          if destination.containsSubfolder(named: item) {
+            try destination.subfolder(named: item).delete()
+          }
+          let destinationSubFolder = try destination.createSubfolder(named: item)
+          try Folder(path: path)
+            .subfolder(named: item)
+            .copy(to: destinationSubFolder)
+        } else {
+          let file = try current.file(named: item)
+          if destination.containsFile(named: item) {
+            try destination.file(named: item).delete()
+          }
+          
+          try destination.createFile(named: item, contents: try file.read())
+        }
+      }
     } catch {
       throw LocationError(path: path, reason: .copyFailed(error))
     }
@@ -371,8 +412,8 @@ extension Storage where LocationType == Folder {
 
     guard
       fileManager.createFile(atPath: filePath, contents: contents),
-      let storage = try? Storage<File>(path: filePath, fileManager: fileManager) else
-    {
+      let storage = try? Storage<File>(path: filePath, fileManager: fileManager)
+    else {
       throw WriteError(path: filePath, reason: .fileCreationFailed)
     }
 
@@ -404,7 +445,7 @@ public struct File: Location {
   public init?(argument: String) {
     try? self.init(possiblyRelativePath: argument)
   }
-  
+
   /// Attempts to use `init(path:)` with argument as an absolute path. When that fails it attempts to
   /// initialise relative to the current path. Finally if that fails the error is logged and it simply returns nil.
   /// - Parameter possiblyRelativePath: absolute or relative path to `FileManager.default.currentDirectoryPath`
@@ -490,8 +531,9 @@ extension File {
   /// Read the contents of the file as binary data.
   /// - throws: `ReadError` if the file couldn't be read.
   public func read() throws -> Data {
-    do { return try Data(contentsOf: url) }
-    catch { throw ReadError(path: path, reason: .readFailed(error)) }
+    do { return try Data(contentsOf: url) } catch {
+      throw ReadError(path: path, reason: .readFailed(error))
+    }
   }
 
   /// Read the contents of the file as a string.
@@ -522,14 +564,14 @@ extension File {
 
 #if canImport(AppKit) && !targetEnvironment(macCatalyst)
 
-import AppKit
+  import AppKit
 
-extension File {
-  /// Open the file.
-  public func open() {
-    NSWorkspace.shared.open(URL(filePath: path))
+  extension File {
+    /// Open the file.
+    public func open() {
+      NSWorkspace.shared.open(URL(filePath: path))
+    }
   }
-}
 
 #endif
 
@@ -615,8 +657,8 @@ extension Folder {
       fileManager: FileManager,
       isRecursive: Bool,
       includeHidden: Bool,
-      reverseTopLevelTraversal: Bool)
-    {
+      reverseTopLevelTraversal: Bool
+    ) {
       self.folder = folder
       self.fileManager = fileManager
       self.isRecursive = isRecursive
@@ -653,8 +695,10 @@ extension Folder {
       let child = childStorage.map(Child.init)
 
       if isRecursive {
-        let childFolder = (child as? Folder) ?? (try? Folder(
-          storage: Storage(path: childPath, fileManager: fileManager)))
+        let childFolder =
+          (child as? Folder)
+          ?? (try? Folder(
+            storage: Storage(path: childPath, fileManager: fileManager)))
 
         if let childFolder = childFolder {
           let nested = ChildIterator(
@@ -933,7 +977,8 @@ extension Folder {
   @discardableResult
   public func createFileIfNeeded(
     at path: String,
-    contents: @autoclosure () -> Data? = nil) throws
+    contents: @autoclosure () -> Data? = nil
+  ) throws
     -> File
   {
     return try (try? file(at: path)) ?? createFile(at: path, contents: contents())
@@ -948,7 +993,8 @@ extension Folder {
   @discardableResult
   public func createFileIfNeeded(
     withName name: String,
-    contents: @autoclosure () -> Data? = nil) throws
+    contents: @autoclosure () -> Data? = nil
+  ) throws
     -> File
   {
     return try (try? file(named: name)) ?? createFile(named: name, contents: contents())
@@ -1005,50 +1051,54 @@ extension Folder {
 }
 
 #if os(iOS) || os(tvOS) || os(macOS)
-extension Folder {
-  /// The current user's Documents folder
-  public static var documents: Folder? {
-    return try? .matching(.documentDirectory)
-  }
-
-  /// The current user's Library folder
-  public static var library: Folder? {
-    return try? .matching(.libraryDirectory)
-  }
-
-  /// Resolve a folder that matches a search path within a given domain.
-  /// - parameter searchPath: The directory path to search for.
-  /// - parameter domain: The domain to search in.
-  /// - parameter fileManager: Which file manager to search using.
-  /// - throws: `LocationError` if no folder could be resolved.
-  public static func matching(
-    _ searchPath: FileManager.SearchPathDirectory,
-    in domain: FileManager.SearchPathDomainMask = .userDomainMask,
-    resolvedBy fileManager: FileManager = .default) throws
-    -> Folder
-  {
-    let urls = fileManager.urls(for: searchPath, in: domain)
-
-    guard let match = urls.first else {
-      throw LocationError(
-        path: "",
-        reason: .unresolvedSearchPath(searchPath, domain: domain))
+  extension Folder {
+    /// The current user's Documents folder
+    public static var documents: Folder? {
+      return try? .matching(.documentDirectory)
     }
 
-    return try Folder(storage: Storage(
-      path: match.relativePath,
-      fileManager: fileManager))
-  }
+    /// The current user's Library folder
+    public static var library: Folder? {
+      return try? .matching(.libraryDirectory)
+    }
 
-}
+    /// Resolve a folder that matches a search path within a given domain.
+    /// - parameter searchPath: The directory path to search for.
+    /// - parameter domain: The domain to search in.
+    /// - parameter fileManager: Which file manager to search using.
+    /// - throws: `LocationError` if no folder could be resolved.
+    public static func matching(
+      _ searchPath: FileManager.SearchPathDirectory,
+      in domain: FileManager.SearchPathDomainMask = .userDomainMask,
+      resolvedBy fileManager: FileManager = .default
+    ) throws
+      -> Folder
+    {
+      let urls = fileManager.urls(for: searchPath, in: domain)
+
+      guard let match = urls.first else {
+        throw LocationError(
+          path: "",
+          reason: .unresolvedSearchPath(searchPath, domain: domain))
+      }
+
+      return try Folder(
+        storage: Storage(
+          path: match.relativePath,
+          fileManager: fileManager))
+    }
+
+  }
 #endif
 
 // MARK: - FilesError
 
 enum FileError: Swift.Error {
   case noParent(file: String = #fileID, function: String = #function, line: UInt = #line)
-  case copyFailed(error: Swift.Error, file: String = #fileID, function: String = #function, line: UInt = #line)
-  case invalidFileName(String, file: String = #fileID, function: String = #function, line: UInt = #line)
+  case copyFailed(
+    error: Swift.Error, file: String = #fileID, function: String = #function, line: UInt = #line)
+  case invalidFileName(
+    String, file: String = #fileID, function: String = #function, line: UInt = #line)
 }
 
 /// Error type thrown by all of Files' throwing APIs.
