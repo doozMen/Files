@@ -189,8 +189,7 @@ extension Location {
         try folder.file(at: newPath).write(data)
         return try Self(path: newPath)
       } else {
-        let file = try folder.createFile(at: newPath)
-        try file.write(data)
+        let file = try folder.createFile(named: name, contents: data)
         return try Self(path: file.path)
       }
     case .folder:
