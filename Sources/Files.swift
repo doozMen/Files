@@ -194,7 +194,9 @@ extension Location {
       }
     case .folder:
       try storage.copyFolder(to: folder)
-      return try Self(path: folder.path)
+      let current = try Folder(path: storage.path)
+      let resultPath = "\(folder.path)\(current.name)"
+      return try Self(path: resultPath)
     }
   }
 
@@ -320,8 +322,14 @@ extension Storage {
     do {
       let contents = try fileManager
         .contentsOfDirectory(atPath: path)
+      
+      guard !contents.isEmpty else {
+        try destination.createSubfolderIfNeeded(withName: current.name)
+        return
+      }
+      
       for item in contents {
-        if let folder = try? current.subfolder(named: item) {
+        if (try? current.subfolder(named: item)) != nil {
           if destination.containsSubfolder(named: item) {
             try destination.subfolder(named: item).delete()
           }
@@ -568,7 +576,7 @@ extension File {
   extension File {
     /// Open the file.
     public func open() {
-      NSWorkspace.shared.open(URL(filePath: path))
+      NSWorkspace.shared.open(URL(fileURLWithPath: path))
     }
   }
 

@@ -233,11 +233,7 @@ extension File {
       )
     
     let newName: String
-    if #available(iOS 16.0, *) {
-      newName = URL(filePath: relativePath).lastPathComponent
-    } else {
-      newName = URL(fileURLWithPath: relativePath).lastPathComponent
-    }
+    newName = URL(fileURLWithPath: relativePath).lastPathComponent
     
     do {
       guard copyFolder.containsFile(at: relativePath) else {
