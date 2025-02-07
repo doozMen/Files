@@ -194,9 +194,7 @@ extension Location {
       }
     case .folder:
       try storage.copyFolder(to: folder)
-      let current = try Folder(path: storage.path)
-      let resultPath = "\(folder.path)\(current.name)"
-      return try Self(path: resultPath)
+      return try Self(path: folder.path)
     }
   }
 
